@@ -41,3 +41,4 @@ override.tf.json
 .terraformrc
 terraform.rc
 **/modules/*/output
+!examples/*.tfvars
