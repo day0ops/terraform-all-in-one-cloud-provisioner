@@ -7,6 +7,11 @@ variable "enable_gke" {
 variable "gke_project" {
   description = "GCP Project ID for GKE"
   type        = string
+
+  validation {
+    condition     = can(length(var.gke_project) > 0)
+    error_message = "GKE project ID of the cluster must be provided."
+  }
 }
 
 variable "gke_region" {
@@ -18,6 +23,11 @@ variable "gke_region" {
 variable "gke_cluster_name" {
   description = "GKE cluster name"
   type        = string
+
+  validation {
+    condition     = can(length(var.gke_cluster_name) > 0)
+    error_message = "GKE cluster name must be provided."
+  }
 }
 
 variable "gke_cluster_index" {

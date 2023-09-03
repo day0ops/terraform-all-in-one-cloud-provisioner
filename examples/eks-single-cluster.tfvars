@@ -23,4 +23,4 @@ aks_cluster_name  = "gp"
 aks_cluster_count = 1
 aks_node_type     = "Standard_D2_v2"
 aks_nodes         = 2
-aks_service_principal = {}
+aks_service_principal = null

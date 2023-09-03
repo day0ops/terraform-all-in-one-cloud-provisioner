@@ -12,9 +12,9 @@ In order to run these terraform modules you will need to authenticate with each 
 
 ## Instructions
 
-1. Few examples given in `examples`
+1. Few examples given in `examples`.
 
-  or define custom `terraform.tfvars`. 
+    or define custom `terraform.tfvars`. 
 
     For e.g.
     ```

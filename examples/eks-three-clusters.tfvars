@@ -10,7 +10,7 @@ gke_node_type      = "e2-standard-4"
 
 enable_eks             = true
 aws_profile            = "default"
-eks_region             = "ap-southeast-1"
+eks_region             = "ap-northeast-1"
 eks_cluster_name       = "gp"
 eks_cluster_count      = 3
 eks_node_type          = "t3.medium"
@@ -23,8 +23,4 @@ aks_cluster_name  = "gp"
 aks_cluster_count = 1
 aks_node_type     = "Standard_D2_v2"
 aks_nodes         = 2
-aks_service_principal = {
-  object_id     = "<object-id>"
-  client_id     = "<client-id>"
-  client_secret = "<secret>"
-}
+aks_service_principal = null

@@ -14,11 +14,21 @@ variable "aws_profile" {
   description = "AWS cli profile (Default: `default`)"
   type        = string
   default     = "default"
+
+  validation {
+    condition     = can(length(var.aws_profile) > 0)
+    error_message = "AWS profile must be provided."
+  }
 }
 
 variable "eks_cluster_name" {
   description = "EKS cluster name"
   type        = string
+
+  validation {
+    condition     = can(length(var.eks_cluster_name) > 0)
+    error_message = "EKS cluster name must be provided."
+  }
 }
 
 variable "eks_cluster_index" {

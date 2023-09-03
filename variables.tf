@@ -43,11 +43,7 @@ variable "gke_cluster_count" {
 variable "gke_project" {
   description = "GCP Project ID for GKE"
   type        = string
-
-  validation {
-    condition     = can(length(var.gke_project) > 0)
-    error_message = "GKE project ID of the cluster must be provided."
-  }
+  default     = null
 }
 
 variable "gke_region" {
@@ -59,11 +55,7 @@ variable "gke_region" {
 variable "gke_cluster_name" {
   description = "GKE cluster name"
   type        = string
-
-  validation {
-    condition     = can(length(var.gke_cluster_name) > 0)
-    error_message = "GKE cluster name must be provided."
-  }
+  default     = null
 }
 
 variable "gke_node_pool_size" {
@@ -115,11 +107,7 @@ variable "eks_region" {
 variable "eks_cluster_name" {
   description = "EKS cluster name"
   type        = string
-
-  validation {
-    condition     = can(length(var.eks_cluster_name) > 0)
-    error_message = "EKS cluster name must be provided."
-  }
+  default     = null
 }
 
 variable "eks_nodes" {
@@ -177,11 +165,7 @@ variable "aks_region" {
 variable "aks_cluster_name" {
   description = "AKS cluster name"
   type        = string
-
-  validation {
-    condition     = can(length(var.aks_cluster_name) > 0)
-    error_message = "AKS cluster name must be provided."
-  }
+  default     = null
 }
 
 variable "aks_nodes" {
