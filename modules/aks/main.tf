@@ -104,7 +104,7 @@ resource "azurerm_kubernetes_cluster" "aks_master" {
   dns_prefix                = local.cluster_name
   kubernetes_version        = try(try(local.k8s_version, data.azurerm_kubernetes_service_versions.aks_current_k8s_version.0.latest_version), null)
   node_resource_group       = local.cluster_name
-  automatic_channel_upgrade = "stable"
+  automatic_channel_upgrade = var.aks_automatic_channel_upgrade
 
   azure_policy_enabled = var.aks_addons.policy
 

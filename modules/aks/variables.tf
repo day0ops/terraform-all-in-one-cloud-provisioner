@@ -129,6 +129,12 @@ variable "aks_diagnostics" {
   default = null
 }
 
+variable "aks_automatic_channel_upgrade" {
+  description = "The upgrade channel for Kubernetes cluster"
+  type        = string
+  default     = "none"
+}
+
 # -- Tagging and labeling
 
 variable "owner" {
