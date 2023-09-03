@@ -126,7 +126,7 @@ resource "azurerm_kubernetes_cluster" "aks_master" {
     type                 = local.default_agent_profile.type
     vnet_subnet_id       = azurerm_subnet.aks_subnet.0.id
     node_taints          = null
-    orchestrator_version = null
+    orchestrator_version = local.k8s_version
     enable_auto_scaling  = false
     max_pods             = local.default_agent_profile.max_pods
     os_sku               = local.default_agent_profile.os_sku
@@ -182,6 +182,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "aks_workers" {
   kubernetes_cluster_id = azurerm_kubernetes_cluster.aks_master.0.id
   vm_size               = var.aks_node_type
   zones                 = var.aks_availability_zones
+  orchestrator_version  = local.k8s_version
   enable_auto_scaling   = var.aks_enable_nodes_auto_scaling
   node_count            = var.aks_nodes
   min_count             = var.aks_min_nodes
