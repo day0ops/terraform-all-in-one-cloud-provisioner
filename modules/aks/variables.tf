@@ -130,9 +130,15 @@ variable "aks_diagnostics" {
 }
 
 variable "aks_automatic_channel_upgrade" {
-  description = "The upgrade channel for Kubernetes cluster"
+  description = "The upgrade channel for Kubernetes cluster (Default: `none`)"
   type        = string
   default     = "none"
+}
+
+variable "aks_restrict_workstation_access" {
+  description = "Restrict access to the Kubernetes cluster with the workstation CIDR (Default: `true`)"
+  type        = bool
+  default     = true
 }
 
 # -- Tagging and labeling

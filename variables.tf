@@ -218,3 +218,9 @@ variable "aks_kubernetes_version" {
   type        = string
   default     = "1.24"
 }
+
+variable "aks_restrict_workstation_access" {
+  description = "Restrict access to the Kubernetes cluster with the workstation CIDR (Default: `true`)"
+  type        = bool
+  default     = true
+}

@@ -31,7 +31,7 @@ locals {
   k8s_version             = try(var.kubernetes_version, "")
   dns_prefix              = try(format("%v-%v", substr(format("%v%v", var.aks_cluster_name, random_id.aks_cluster_name_suffix.0.hex), 0, 40), var.aks_cluster_index), "")
   node_pool_name          = "nodepool"
-  workstation_public_cidr = split(",", try("${chomp(data.http.workstation_public_ip.0.response_body)}/32", ""))
+  workstation_public_cidr = var.aks_restrict_workstation_access ? split(",", try("${chomp(data.http.workstation_public_ip.0.response_body)}/32", "")) : null
   tags = merge(
     {
       "provider"   = local.provider_type
