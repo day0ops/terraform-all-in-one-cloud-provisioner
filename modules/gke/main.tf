@@ -38,7 +38,7 @@ locals {
   cluster_name            = try(join("-", [format("%v-%v-%v", var.owner, var.gke_cluster_name, random_id.gke_cluster_name_suffix.0.hex), var.gke_cluster_index]), "")
   kubeconfig_context      = try(format("%v-%v", local.provider_type, local.cluster_name), "")
   node_pool_name          = try(format("%v-node", local.cluster_name), "")
-  current_k8s_version     = try(tostring(try(var.kubernetes_version, data.google_container_engine_versions.gke_current_k8s_version.0.release_channel_default_version["STABLE"])), "")
+  k8s_version             = try(tostring(try(var.kubernetes_version, data.google_container_engine_versions.gke_current_k8s_version.0.release_channel_default_version["STABLE"])), "")
   workstation_public_cidr = try("${chomp(data.http.workstation_public_ip.0.response_body)}/32", "")
   all_service_account_roles = concat(var.gke_serviceaccount_roles, [
     "roles/logging.logWriter",
@@ -87,8 +87,8 @@ resource "google_container_cluster" "gke_master" {
   project            = var.gke_project
   name               = local.cluster_name
   location           = var.enable_gke_regional_cluster ? var.gke_region : data.google_compute_zones.gke_available_zones[count.index].names[0]
-  min_master_version = local.current_k8s_version
-  node_version       = local.current_k8s_version
+  min_master_version = local.k8s_version
+  node_version       = local.k8s_version
 
   # Remove the default node pool once provisioned since we manage this separately
   remove_default_node_pool = true
@@ -133,7 +133,7 @@ resource "google_container_node_pool" "gke_workers" {
   location   = var.enable_gke_regional_cluster ? var.gke_region : data.google_compute_zones.gke_available_zones[count.index].names[0]
   cluster    = google_container_cluster.gke_master[count.index].name
   node_count = var.gke_node_pool_size
-  version    = local.current_k8s_version
+  version    = local.k8s_version
 
   node_config {
     image_type      = var.gke_node_image_type

@@ -102,7 +102,7 @@ resource "azurerm_kubernetes_cluster" "aks_master" {
   location                  = azurerm_resource_group.aks_resource_group.0.location
   resource_group_name       = azurerm_resource_group.aks_resource_group.0.name
   dns_prefix                = local.cluster_name
-  kubernetes_version        = try(data.azurerm_kubernetes_service_versions.aks_current_k8s_version.0.latest_version, local.k8s_version)
+  kubernetes_version        = try(try(local.k8s_version, data.azurerm_kubernetes_service_versions.aks_current_k8s_version.0.latest_version), null)
   node_resource_group       = local.cluster_name
   automatic_channel_upgrade = "stable"
 

@@ -20,7 +20,7 @@ locals {
   provider_type           = "eks"
   cluster_name            = try(join("-", [format("%v-%v-%v", var.owner, var.eks_cluster_name, random_id.eks_cluster_name_suffix.0.hex), var.eks_cluster_index]), "")
   kubeconfig_context      = try(format("%v-%v", local.provider_type, local.cluster_name), "")
-  current_k8s_version     = try(var.kubernetes_version, "")
+  k8s_version             = try(var.kubernetes_version, "")
   workstation_public_cidr = try("${chomp(data.http.workstation_public_ip.0.response_body)}/32", "")
   tags = merge(
     {
@@ -192,7 +192,7 @@ resource "aws_eks_cluster" "eks_master" {
 
   name     = local.cluster_name
   role_arn = aws_iam_role.eks_master_iam_role.0.arn
-  version  = local.current_k8s_version
+  version  = local.k8s_version
 
   vpc_config {
     security_group_ids = [aws_security_group.eks_master_sec_group.0.id]
