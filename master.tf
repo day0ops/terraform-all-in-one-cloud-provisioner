@@ -56,7 +56,8 @@ module "aks" {
   aks_node_type                   = var.aks_node_type
   aks_service_principal           = var.aks_service_principal
   aks_managed_identities          = var.aks_managed_identities
-  aks_automatic_channel_upgrade   = "none"
+  // Hardcoding to disable auto upgrades
+  aks_automatic_channel_upgrade   = null
   aks_restrict_workstation_access = var.aks_restrict_workstation_access
   kubernetes_version              = var.aks_kubernetes_version
 

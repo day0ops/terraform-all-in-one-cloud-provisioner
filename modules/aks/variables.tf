@@ -130,9 +130,9 @@ variable "aks_diagnostics" {
 }
 
 variable "aks_automatic_channel_upgrade" {
-  description = "The upgrade channel for Kubernetes cluster (Default: `none`)"
+  description = "The upgrade channel for Kubernetes cluster (Default: `null` - sets to 'none')"
   type        = string
-  default     = "none"
+  default     = null
 }
 
 variable "aks_restrict_workstation_access" {
