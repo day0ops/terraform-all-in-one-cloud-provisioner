@@ -134,6 +134,12 @@ variable "eks_node_type" {
   default     = "t3.medium"
 }
 
+variable "eks_subnets" {
+  description = "List of subnets (Default: `2`)"
+  type        = number
+  default     = 2
+}
+
 variable "eks_kubernetes_version" {
   description = "EKS Kubernetes version (Default: `1.24`, Ref: https://docs.aws.amazon.com/eks/latest/userguide/kubernetes-versions.html)"
   type        = string
