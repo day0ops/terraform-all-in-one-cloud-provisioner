@@ -1,12 +1,6 @@
 owner = "kasunt"
 
 enable_gke         = false
-gke_project        = "field-engineering-apac"
-gke_cluster_count  = 1
-gke_region         = "australia-southeast1"
-gke_cluster_name   = "gp"
-gke_node_pool_size = 3
-gke_node_type      = "e2-standard-4"
 
 enable_eks             = true
 aws_profile            = "default"
