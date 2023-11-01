@@ -365,45 +365,27 @@ resource "aws_autoscaling_group" "eks_worker_asg" {
   }
 }
 
-data "template_file" "aws_auth_tpl" {
-  count = local.count
-
-  template = file("${path.module}/files/aws-auth-template.yaml.tpl")
-
-  vars = {
-    rolearn = aws_iam_role.eks_worker_iam_role.0.arn
-  }
-
-  depends_on = [aws_eks_cluster.eks_master]
-}
-
 resource "local_file" "aws_auth_tpl_renderer" {
   count = local.count
 
-  content  = data.template_file.aws_auth_tpl.0.rendered
+  content  = templatefile("${path.module}/files/aws-auth-template.yaml.tpl",{
+    rolearn = aws_iam_role.eks_worker_iam_role.0.arn
+  })
+
   filename = "${path.module}/output/aws-auth-${var.eks_cluster_index}.yaml"
-}
-
-data "template_file" "kubeconfig_tpl" {
-  count = local.count
-
-  template = file("${path.module}/files/kubeconfig-template.tpl")
-
-  vars = {
-    context                = local.kubeconfig_context
-    endpoint               = aws_eks_cluster.eks_master.0.endpoint
-    cluster_ca_certificate = aws_eks_cluster.eks_master.0.certificate_authority.0.data
-    cluster_name           = local.cluster_name
-    region                 = var.eks_region
-  }
-
-  depends_on = [local_file.aws_auth_tpl_renderer]
 }
 
 resource "local_file" "kubeconfig_tpl_renderer" {
   count = local.count
 
-  content  = data.template_file.kubeconfig_tpl.0.rendered
+  content  = templatefile("${path.module}/files/kubeconfig-template.tpl", {
+    context                = local.kubeconfig_context
+    endpoint               = aws_eks_cluster.eks_master.0.endpoint
+    cluster_ca_certificate = aws_eks_cluster.eks_master.0.certificate_authority.0.data
+    cluster_name           = local.cluster_name
+    region                 = var.eks_region
+  })
+
   filename = "${path.module}/output/kubeconfig-eks-${var.eks_cluster_index}"
 }
 

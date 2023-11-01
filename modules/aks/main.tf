@@ -257,27 +257,18 @@ data "azurerm_kubernetes_cluster" "aks_kubeconfig" {
   resource_group_name = azurerm_kubernetes_cluster.aks_master.0.resource_group_name
 }
 
-data "template_file" "kubeconfig_tpl" {
+resource "local_file" "kubeconfig_tpl_renderer" {
   count = local.count
 
-  template = file("${path.module}/files/kubeconfig-template.tpl")
-
-  vars = {
+  content  = templatefile("${path.module}/files/kubeconfig-template.tpl", {
     context                = local.kubeconfig_context
     endpoint               = data.azurerm_kubernetes_cluster.aks_kubeconfig.0.kube_config.0.host
     cluster_ca_certificate = data.azurerm_kubernetes_cluster.aks_kubeconfig.0.kube_config.0.cluster_ca_certificate
     client_certificate     = data.azurerm_kubernetes_cluster.aks_kubeconfig.0.kube_config.0.client_certificate
     client_key             = data.azurerm_kubernetes_cluster.aks_kubeconfig.0.kube_config.0.client_key
     cluster_name           = local.cluster_name
-  }
+  })
 
-  depends_on = [data.azurerm_kubernetes_cluster.aks_kubeconfig]
-}
-
-resource "local_file" "kubeconfig_tpl_renderer" {
-  count = local.count
-
-  content  = data.template_file.kubeconfig_tpl.0.rendered
   filename = "${path.module}/output/kubeconfig-aks-${var.aks_cluster_index}"
 }
 
