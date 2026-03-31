@@ -1,0 +1,27 @@
+module "defaults" {
+  source = "../../modules/defaults"
+}
+
+module "aks" {
+  source = "../../modules/aks"
+  count  = var.aks_cluster_count
+
+  enable_aks                    = true
+  aks_region                    = var.aks_region
+  aks_cluster_name              = var.aks_cluster_name
+  aks_cluster_index             = count.index + 1
+  aks_nodes                     = var.aks_nodes
+  aks_enable_nodes_auto_scaling = var.aks_enable_nodes_auto_scaling
+  aks_min_nodes                 = var.aks_min_nodes
+  aks_max_nodes                 = var.aks_max_nodes
+  aks_node_type                 = var.aks_node_type
+  aks_service_principal         = var.aks_service_principal
+  aks_managed_identities        = var.aks_managed_identities
+  aks_automatic_channel_upgrade = null
+  aks_restrict_workstation_access = var.aks_restrict_workstation_access
+  kubernetes_version            = coalesce(var.kubernetes_version, module.defaults.kubernetes_version)
+
+  owner   = var.owner
+  team    = var.team
+  purpose = var.purpose
+}

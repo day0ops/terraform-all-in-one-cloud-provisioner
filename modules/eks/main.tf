@@ -39,6 +39,28 @@ locals {
       value               = local.tags[key]
       propagate_at_launch = "true"
   }])
+  service_cidr = aws_eks_cluster.eks_master.0.kubernetes_network_config.0.service_ipv4_cidr
+  nodeadm_user_data = <<-EOT
+#!/bin/bash
+set -ex
+
+# Ensure cloud-init is up to date
+dnf update -y cloud-init
+
+cat <<'NODECONFIG' > /tmp/nodeadm-config.yaml
+---
+apiVersion: node.eks.aws/v1alpha1
+kind: NodeConfig
+spec:
+  cluster:
+    name: ${local.cluster_name}
+    apiServerEndpoint: ${aws_eks_cluster.eks_master.0.endpoint}
+    certificateAuthority: ${aws_eks_cluster.eks_master.0.certificate_authority.0.data}
+    cidr: ${local.service_cidr}
+NODECONFIG
+
+/usr/bin/nodeadm init --config-source file:///tmp/nodeadm-config.yaml
+EOT
 }
 
 data "aws_availability_zones" "eks_available_zones" {
@@ -49,16 +71,11 @@ data "aws_region" "eks_region" {
   count = local.count
 }
 
-data "aws_ami" "eks_worker_ami" {
+# EKS optimized AMI via SSM (works for any EKS-supported version; uses AL2023 recommended AMI)
+data "aws_ssm_parameter" "eks_worker_ami" {
   count = local.count
 
-  filter {
-    name   = "name"
-    values = ["amazon-eks-node-${aws_eks_cluster.eks_master.0.version}-v*"]
-  }
-
-  most_recent = true
-  owners      = ["amazon"]
+  name = "/aws/service/eks/optimized-ami/${local.k8s_version}/amazon-linux-2023/x86_64/standard/recommended/image_id"
 }
 
 resource "aws_vpc" "eks_vpc" {
@@ -310,32 +327,52 @@ resource "aws_security_group_rule" "eks_worker_sec_group_rule_allow_pods_to_k8_a
   type                     = "ingress"
 }
 
-resource "aws_launch_configuration" "eks_worker_lc" {
+resource "aws_launch_template" "eks_worker_lt" {
   count = local.count
 
-  associate_public_ip_address = true
-  iam_instance_profile        = aws_iam_instance_profile.eks_worker_instance_profile.0.name
-  image_id                    = data.aws_ami.eks_worker_ami.0.id
-  instance_type               = var.eks_node_type
-  name_prefix                 = local.cluster_name
-  security_groups             = [aws_security_group.eks_worker_sec_group[0].id]
-  user_data_base64 = base64encode(<<USERDATA
-#!/bin/bash
-set -o xtrace
-/etc/eks/bootstrap.sh --apiserver-endpoint '${aws_eks_cluster.eks_master.0.endpoint}' --b64-cluster-ca '${aws_eks_cluster.eks_master.0.certificate_authority.0.data}' '${local.cluster_name}'
-USERDATA
-  )
+  name_prefix   = local.cluster_name
+  image_id      = data.aws_ssm_parameter.eks_worker_ami.0.value
+  instance_type = var.eks_node_type
+  user_data     = base64encode(local.nodeadm_user_data)
+
+  iam_instance_profile {
+    name = aws_iam_instance_profile.eks_worker_instance_profile.0.name
+  }
+
+  network_interfaces {
+    associate_public_ip_address = true
+    security_groups             = [aws_security_group.eks_worker_sec_group[0].id]
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = merge(
+      {
+        Name                                          = local.cluster_name
+        "kubernetes.io/cluster/${local.cluster_name}" = "owned"
+      },
+      local.tags
+    )
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "aws_autoscaling_group" "eks_worker_asg" {
   count = local.count
 
-  name                 = local.cluster_name
-  desired_capacity     = var.eks_nodes
-  launch_configuration = aws_launch_configuration.eks_worker_lc.0.id
-  max_size             = var.eks_max_nodes
-  min_size             = var.eks_min_nodes
-  vpc_zone_identifier  = aws_subnet.eks_public_subnet.*.id
+  name             = local.cluster_name
+  desired_capacity = var.eks_nodes
+  max_size         = var.eks_max_nodes
+  min_size         = var.eks_min_nodes
+  vpc_zone_identifier = aws_subnet.eks_public_subnet.*.id
+
+  launch_template {
+    id      = aws_launch_template.eks_worker_lt.0.id
+    version = "$Latest"
+  }
 
   dynamic "tag" {
     for_each = concat(
@@ -365,46 +402,35 @@ resource "aws_autoscaling_group" "eks_worker_asg" {
   }
 }
 
-data "template_file" "aws_auth_tpl" {
-  count = local.count
-
-  template = file("${path.module}/files/aws-auth-template.yaml.tpl")
-
-  vars = {
+locals {
+  aws_auth_rendered = local.count > 0 ? templatefile("${path.module}/files/aws-auth-template.yaml.tpl", {
     rolearn = aws_iam_role.eks_worker_iam_role.0.arn
-  }
-
-  depends_on = [aws_eks_cluster.eks_master]
-}
-
-resource "local_file" "aws_auth_tpl_renderer" {
-  count = local.count
-
-  content  = data.template_file.aws_auth_tpl.0.rendered
-  filename = "${path.module}/output/aws-auth-${var.eks_cluster_index}.yaml"
-}
-
-data "template_file" "kubeconfig_tpl" {
-  count = local.count
-
-  template = file("${path.module}/files/kubeconfig-template.tpl")
-
-  vars = {
+  }) : ""
+  kubeconfig_rendered = local.count > 0 ? templatefile("${path.module}/files/kubeconfig-template.tpl", {
     context                = local.kubeconfig_context
     endpoint               = aws_eks_cluster.eks_master.0.endpoint
     cluster_ca_certificate = aws_eks_cluster.eks_master.0.certificate_authority.0.data
     cluster_name           = local.cluster_name
     region                 = var.eks_region
-  }
+  }) : ""
+}
 
-  depends_on = [local_file.aws_auth_tpl_renderer]
+resource "local_file" "aws_auth_tpl_renderer" {
+  count = local.count
+
+  content  = local.aws_auth_rendered
+  filename = "${path.module}/output/aws-auth-${var.eks_cluster_index}.yaml"
+
+  depends_on = [aws_eks_cluster.eks_master]
 }
 
 resource "local_file" "kubeconfig_tpl_renderer" {
   count = local.count
 
-  content  = data.template_file.kubeconfig_tpl.0.rendered
+  content  = local.kubeconfig_rendered
   filename = "${path.module}/output/kubeconfig-eks-${var.eks_cluster_index}"
+
+  depends_on = [local_file.aws_auth_tpl_renderer]
 }
 
 resource "null_resource" "aws_auth_configmap_apply" {
@@ -413,7 +439,8 @@ resource "null_resource" "aws_auth_configmap_apply" {
   provisioner "local-exec" {
     command = "kubectl apply -f ${path.module}/output/aws-auth-${var.eks_cluster_index}.yaml"
     environment = {
-      KUBECONFIG = "${path.module}/output/kubeconfig-eks-${var.eks_cluster_index}"
+      KUBECONFIG  = "${path.module}/output/kubeconfig-eks-${var.eks_cluster_index}"
+      AWS_PROFILE = var.aws_profile
     }
   }
 

@@ -153,21 +153,17 @@ resource "google_container_node_pool" "gke_workers" {
 
 data "google_client_config" "gke_config" {}
 
-data "template_file" "kubeconfig_tpl" {
-  count = local.count
-
-  template = file("${path.module}/files/kubeconfig-template.tpl")
-
-  vars = {
+locals {
+  kubeconfig_rendered = local.count > 0 ? templatefile("${path.module}/files/kubeconfig-template.tpl", {
     context                = local.kubeconfig_context
     endpoint               = google_container_cluster.gke_master.0.endpoint
     cluster_ca_certificate = google_container_cluster.gke_master.0.master_auth.0.cluster_ca_certificate
-  }
+  }) : ""
 }
 
 resource "local_file" "kubeconfig_tpl_renderer" {
   count = local.count
 
-  content  = data.template_file.kubeconfig_tpl.0.rendered
+  content  = local.kubeconfig_rendered
   filename = "${path.module}/output/kubeconfig-gke-${var.gke_cluster_index}"
 }

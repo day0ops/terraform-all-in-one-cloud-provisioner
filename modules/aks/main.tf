@@ -104,7 +104,7 @@ resource "azurerm_kubernetes_cluster" "aks_master" {
   dns_prefix                = local.cluster_name
   kubernetes_version        = try(try(local.k8s_version, data.azurerm_kubernetes_service_versions.aks_current_k8s_version.0.latest_version), null)
   node_resource_group       = local.cluster_name
-  automatic_channel_upgrade = var.aks_automatic_channel_upgrade
+  automatic_upgrade_channel = var.aks_automatic_channel_upgrade
 
   azure_policy_enabled = var.aks_addons.policy
 
@@ -125,9 +125,8 @@ resource "azurerm_kubernetes_cluster" "aks_master" {
     max_count            = null
     type                 = local.default_agent_profile.type
     vnet_subnet_id       = azurerm_subnet.aks_subnet.0.id
-    node_taints          = null
     orchestrator_version = local.k8s_version
-    enable_auto_scaling  = false
+    auto_scaling_enabled = false
     max_pods             = local.default_agent_profile.max_pods
     os_sku               = local.default_agent_profile.os_sku
     os_disk_size_gb      = local.default_agent_profile.os_disk_size_gb
@@ -183,7 +182,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "aks_workers" {
   vm_size               = var.aks_node_type
   zones                 = var.aks_availability_zones
   orchestrator_version  = local.k8s_version
-  enable_auto_scaling   = var.aks_enable_nodes_auto_scaling
+  auto_scaling_enabled  = var.aks_enable_nodes_auto_scaling
   node_count            = var.aks_nodes
   min_count             = var.aks_min_nodes
   max_count             = var.aks_max_nodes
@@ -213,16 +212,10 @@ resource "azurerm_monitor_diagnostic_setting" "aks_diagnostic" {
   target_resource_id         = azurerm_kubernetes_cluster.aks_master.0.id
   log_analytics_workspace_id = local.parsed_diag.log_analytics_id
 
-  dynamic "log" {
-    for_each = data.azurerm_monitor_diagnostic_categories.aks_diagnostic_categories.0.log_category_types
+  dynamic "enabled_log" {
+    for_each = { for k, v in data.azurerm_monitor_diagnostic_categories.aks_diagnostic_categories.0.log_category_types : k => v if contains(local.parsed_diag.log, "all") || contains(local.parsed_diag.log, v) }
     content {
-      category = log.value
-      enabled  = contains(local.parsed_diag.log, "all") || contains(local.parsed_diag.log, log.value)
-
-      retention_policy {
-        enabled = false
-        days    = 0
-      }
+      category = enabled_log.value
     }
   }
 }
@@ -257,28 +250,24 @@ data "azurerm_kubernetes_cluster" "aks_kubeconfig" {
   resource_group_name = azurerm_kubernetes_cluster.aks_master.0.resource_group_name
 }
 
-data "template_file" "kubeconfig_tpl" {
-  count = local.count
-
-  template = file("${path.module}/files/kubeconfig-template.tpl")
-
-  vars = {
+locals {
+  kubeconfig_rendered = local.count > 0 ? templatefile("${path.module}/files/kubeconfig-template.tpl", {
     context                = local.kubeconfig_context
     endpoint               = data.azurerm_kubernetes_cluster.aks_kubeconfig.0.kube_config.0.host
     cluster_ca_certificate = data.azurerm_kubernetes_cluster.aks_kubeconfig.0.kube_config.0.cluster_ca_certificate
     client_certificate     = data.azurerm_kubernetes_cluster.aks_kubeconfig.0.kube_config.0.client_certificate
     client_key             = data.azurerm_kubernetes_cluster.aks_kubeconfig.0.kube_config.0.client_key
     cluster_name           = local.cluster_name
-  }
-
-  depends_on = [data.azurerm_kubernetes_cluster.aks_kubeconfig]
+  }) : ""
 }
 
 resource "local_file" "kubeconfig_tpl_renderer" {
   count = local.count
 
-  content  = data.template_file.kubeconfig_tpl.0.rendered
+  content  = local.kubeconfig_rendered
   filename = "${path.module}/output/kubeconfig-aks-${var.aks_cluster_index}"
+
+  depends_on = [data.azurerm_kubernetes_cluster.aks_kubeconfig]
 }
 
 // -----

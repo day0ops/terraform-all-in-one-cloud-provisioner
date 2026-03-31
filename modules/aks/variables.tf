@@ -80,9 +80,9 @@ variable "aks_service_cidr_block" {
 }
 
 variable "kubernetes_version" {
-  description = "Kubernetes version. If not specified the current stable version is used"
+  description = "AKS Kubernetes version (default: 1.34)"
   type        = string
-  default     = null
+  default     = "1.34"
 }
 
 variable "worker_node_authentication" {

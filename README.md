@@ -1,52 +1,37 @@
-# All-In-One Terraform Provisioner
+# Terraform Cloud Provisioner
 
-This includes terraform modules for provisioning Kubernetes clusters in AWS, Google and Azure.
+Terraform modules for provisioning Kubernetes clusters in AWS (EKS), Google (GKE), and Azure (AKS).
+
+All runnable configs live under **`environments/`**. Each environment is a separate root that uses only the providers you need, so you don't have to configure unused cloud credentials.
+
+## Layout
+
+- **`environments/`** – Terraform roots by provider combination (see [environments/README.md](environments/README.md)):
+  - Single: `aks`, `eks`, `gke`
+  - Pairs: `aks-eks`, `aks-gke`, `eks-gke`
+  - All three: `multicluster`
+- **`modules/`** – Shared cluster modules: `aks`, `eks`, `gke`. Provider version constraints are defined in each module’s `versions.tf`.
+- **`examples/`** – Sample tfvars (e.g. for EKS); adapt variable names to the environment you use (see each environment’s `variables.tf`).
+
+## Quick start
+
+1. Choose an environment, e.g. **EKS only** → `environments/eks`.
+2. Authenticate for that cloud (e.g. AWS profile or env vars for EKS).
+3. Run Terraform from that directory:
+
+   ```bash
+   cd environments/eks
+   terraform init
+   terraform plan -var="owner=yourname" -var="eks_cluster_name=my-cluster" -var-file=my.tfvars
+   terraform apply -var="owner=yourname" -var="eks_cluster_name=my-cluster" -var-file=my.tfvars
+   ```
+
+Variables and outputs are per environment; see `environments/<name>/variables.tf` and `environments/<name>/outputs.tf`.
 
 ## Prerequisites
 
-In order to run these terraform modules you will need to authenticate with each of the cloud providers.
-* For EKS - Using `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` to map the credentials.
-* For AKS - Supported via CLI login, `az login`.
-  Create a service principal following [docs](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/guides/service_principal_client_secret)
-* For GKE - Using `gcloud beta auth application-default login` to save the credentials to `json` file. Set env `GOOGLE_APPLICATION_CREDENTIALS` to this file.
+- **EKS** – AWS credentials (e.g. `aws_profile`, or `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`).
+- **GKE** – `gcloud auth application-default login` (or `GOOGLE_APPLICATION_CREDENTIALS`).
+- **AKS** – `az login` and a service principal; see [Azurerm docs](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/guides/service_principal_client_secret).
 
-## Instructions
-
-1. Few examples given in `examples`.
-
-    or define custom `terraform.tfvars`. 
-
-    For e.g.
-    ```
-    owner                   = "kasunt"
-
-    enable_gke              = false
-    gke_project             = "field-engineering-apac"
-    gke_cluster_count       = 3
-    gke_region              = "australia-southeast1"
-    gke_cluster_name        = "test"
-    gke_node_pool_size      = 3
-    gke_node_type           = "e2-standard-4"
-
-    enable_eks              = true
-    aws_profile             = "default"
-    eks_region              = "ap-southeast-1"
-    eks_cluster_name        = "gloo-platform"
-    eks_cluster_count       = 3
-    eks_node_type           = "t3.medium"
-    eks_nodes               = 3
-    ```
-2. `terraform init` to initialize.
-3. `terraform apply` to apply the plan. Alternatively use `terraform apply -var-file examples/<example file>.tfvars -auto-approve`
-4. To retrieve the kube configuration,
-  ```
-  export CLUSTER1_CONTEXT=`terraform output -json | jq -r '.eks_kubeconfig_context.value[0]'`
-  export CLUSTER2_CONTEXT=`terraform output -json | jq -r '.gke_kubeconfig_context.value[0]'`
-  export CLUSTER3_CONTEXT=`terraform output -json | jq -r '.aks_kubeconfig_context.value[0]'`
-
-  export CLUSTER1_CLUSTER=`terraform output -json | jq -r '.eks_cluster_name.value[0]'`
-  export CLUSTER2_CLUSTER=`terraform output -json | jq -r '.gke_cluster_name.value[0]'`
-  export CLUSTER3_CLUSTER=`terraform output -json | jq -r '.aks_cluster_name.value[0]'`
-
-  export KUBECONFIG=$KUBECONFIG:`terraform output -json | jq -r '.eks_kubeconfig.value'`:`terraform output -json | jq -r '.gke_kubeconfig.value'`:`terraform output -json | jq -r '.aks_kubeconfig.value'`
-  ```
+Full list of environments and usage: **[environments/README.md](environments/README.md)**.

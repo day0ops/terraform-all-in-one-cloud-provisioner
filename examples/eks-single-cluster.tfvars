@@ -9,7 +9,7 @@ eks_cluster_name       = "gp"
 eks_cluster_count      = 1
 eks_node_type          = "t3.medium"
 eks_nodes              = 3
-eks_kubernetes_version = "1.24"
+kubernetes_version = "1.34"
 
 enable_aks        = false
 aks_region        = "Australia East"

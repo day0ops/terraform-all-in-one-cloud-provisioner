@@ -101,9 +101,9 @@ variable "gke_oauth_scopes" {
 }
 
 variable "kubernetes_version" {
-  description = "Kubernetes version. If not specified the current stable version is used"
+  description = "GKE Kubernetes version (default: 1.34)"
   type        = string
-  default     = null
+  default     = "1.34"
 }
 
 # -- Tagging and labeling
