@@ -437,7 +437,16 @@ resource "null_resource" "aws_auth_configmap_apply" {
   count = local.count
 
   provisioner "local-exec" {
-    command = "kubectl apply -f ${path.module}/output/aws-auth-${var.eks_cluster_index}.yaml"
+    # Retry loop: EKS API server may not be ready immediately after cluster creation
+    command = <<-EOT
+      for i in 1 2 3 4 5 6; do
+        kubectl apply -f ${path.module}/output/aws-auth-${var.eks_cluster_index}.yaml && exit 0
+        echo "Attempt $i failed, waiting for EKS API server... (retry in 10s)"
+        sleep 10
+      done
+      echo "Failed to apply aws-auth ConfigMap after 6 attempts"
+      exit 1
+    EOT
     environment = {
       KUBECONFIG  = "${path.module}/output/kubeconfig-eks-${var.eks_cluster_index}"
       AWS_PROFILE = var.aws_profile
