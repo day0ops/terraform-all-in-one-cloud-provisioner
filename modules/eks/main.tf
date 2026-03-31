@@ -440,7 +440,7 @@ resource "null_resource" "aws_auth_configmap_apply" {
     # Retry loop: EKS API server may not be ready immediately after cluster creation
     command = <<-EOT
       for i in 1 2 3 4 5 6; do
-        kubectl apply -f ${path.module}/output/aws-auth-${var.eks_cluster_index}.yaml && exit 0
+        kubectl apply --validate=false -f ${path.module}/output/aws-auth-${var.eks_cluster_index}.yaml && exit 0
         echo "Attempt $i failed, waiting for EKS API server... (retry in 10s)"
         sleep 10
       done
