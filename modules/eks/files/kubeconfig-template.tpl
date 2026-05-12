@@ -24,4 +24,6 @@ users:
         - "${cluster_name}"
         - "--region"
         - "${region}"
+        - "--profile"
+        - "${profile}"
 preferences: {}
