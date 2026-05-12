@@ -1,20 +1,25 @@
 owner = "kasunt"
 
-enable_gke         = false
+# ----------------------------------------------------------------------------------
+# EKS
+# ----------------------------------------------------------------------------------
 
-enable_eks             = true
-aws_profile            = "default"
-eks_region             = "ap-southeast-1"
-eks_cluster_name       = "gp"
-eks_cluster_count      = 1
-eks_node_type          = "t3.medium"
-eks_nodes              = 3
+aws_profile        = "default"
+eks_region         = "ap-southeast-2"
+eks_cluster_name   = "demo"
+eks_cluster_count  = 1
+eks_node_type      = "t3.medium"
+eks_nodes          = 2
+eks_min_nodes      = 1
+eks_max_nodes      = 3
+eks_subnets        = 2
 kubernetes_version = "1.34"
 
-enable_aks        = false
-aks_region        = "Australia East"
-aks_cluster_name  = "gp"
-aks_cluster_count = 1
-aks_node_type     = "Standard_D2_v2"
-aks_nodes         = 2
-aks_service_principal = null
+# ----------------------------------------------------------------------------------
+# DNS (optional - Route53 child zone)
+# ----------------------------------------------------------------------------------
+
+# enable_dns          = true
+# dns_parent_zone_id  = "Z0408115XSU33JVY62D3"
+# dns_parent_domain   = "kasunt.apac.fe.solo.io"
+# dns_child_zone_name = "demo"

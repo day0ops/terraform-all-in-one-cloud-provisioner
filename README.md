@@ -11,7 +11,7 @@ All runnable configs live under **`environments/`**. Each environment is a separ
   - Pairs: `aks-eks`, `aks-gke`, `eks-gke`
   - All three: `multicluster`
 - **`modules/`** – Shared cluster modules: `aks`, `eks`, `gke`. Provider version constraints are defined in each module’s `versions.tf`.
-- **`examples/`** – Sample tfvars (e.g. for EKS); adapt variable names to the environment you use (see each environment’s `variables.tf`).
+- **`examples/`** – Sample tfvars per environment (`eks-single-cluster`, `eks-three-clusters`, `clusters-in-all-cloudproviders`, `eks-ipv6`). Each example maps to a specific environment; see [environments/README.md](environments/README.md) for the mapping.
 
 ## Quick start
 

@@ -41,3 +41,16 @@ These directories are **standalone Terraform roots** for specific cloud combinat
 Each environment’s `providers.tf` declares only the provider(s) it needs. Provider version constraints come from the shared modules under `modules/`, so you are not forced to set up unused cloud credentials.
 
 **Default Kubernetes version (single place):** The default version for all clusters (AKS, EKS, GKE) is defined once in **`modules/defaults/variables.tf`** (variable `kubernetes_version`, default `1.34`). Every environment uses this via the `defaults` module; you only change it there to update the default everywhere. To override per run: `-var kubernetes_version=1.35` or set `kubernetes_version` in your tfvars.
+
+## Example tfvars files
+
+Sample variable files live in `examples/`. Use the one that matches your target environment:
+
+| Example file | Target environment | Notes |
+|---|---|---|
+| `eks-single-cluster.tfvars` | `environments/eks` | Single EKS cluster; DNS vars commented out |
+| `eks-three-clusters.tfvars` | `environments/eks` | Three EKS clusters (`eks_cluster_count = 3`) |
+| `clusters-in-all-cloudproviders.tfvars` | `environments/multicluster` | All three providers; AKS service principal required |
+| `eks-ipv6.tfvars` | `environments/eks-ipv6` | IPv6 dual-stack; bastion enabled by default |
+
+Each example covers required variables and shows optional ones as comments. Copy the relevant file, edit values, then pass it with `-var-file=my.tfvars`.
