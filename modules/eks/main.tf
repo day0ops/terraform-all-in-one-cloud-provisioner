@@ -412,6 +412,7 @@ locals {
     cluster_ca_certificate = aws_eks_cluster.eks_master.0.certificate_authority.0.data
     cluster_name           = local.cluster_name
     region                 = var.eks_region
+    profile                = var.aws_profile
   }) : ""
 }
 
@@ -454,4 +455,152 @@ resource "null_resource" "aws_auth_configmap_apply" {
   }
 
   depends_on = [local_file.aws_auth_tpl_renderer, local_file.kubeconfig_tpl_renderer]
+}
+
+# -- Route53
+
+locals {
+  dns_enabled      = var.enable_dns && local.count > 0
+  dns_child_domain = local.dns_enabled ? "${var.dns_child_zone_name}.${var.dns_parent_domain}" : ""
+}
+
+resource "aws_route53_zone" "child" {
+  count         = local.dns_enabled ? 1 : 0
+  name          = local.dns_child_domain
+  force_destroy = true
+  tags          = local.tags
+}
+
+resource "aws_route53_record" "child_ns" {
+  count   = local.dns_enabled ? 1 : 0
+  zone_id = var.dns_parent_zone_id
+  name    = local.dns_child_domain
+  type    = "NS"
+  ttl     = 300
+  records = aws_route53_zone.child[0].name_servers
+}
+
+resource "aws_iam_policy" "eks_worker_route53_policy" {
+  count = local.dns_enabled ? 1 : 0
+  name  = format("%v-route53-policy", local.cluster_name)
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = ["route53:ChangeResourceRecordSets"]
+        Resource = "arn:aws:route53:::hostedzone/*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "route53:GetChange",
+          "route53:ListHostedZones",
+          "route53:ListHostedZonesByName",
+          "route53:ListResourceRecordSets",
+          "route53:ListTagsForResource"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+  tags = local.tags
+}
+
+resource "aws_iam_role_policy_attachment" "eks_worker_route53_policy" {
+  count      = local.dns_enabled ? 1 : 0
+  policy_arn = aws_iam_policy.eks_worker_route53_policy[0].arn
+  role       = aws_iam_role.eks_worker_iam_role[0].name
+}
+
+# -- OIDC Provider
+
+resource "aws_iam_openid_connect_provider" "eks_oidc_provider" {
+  count           = local.count
+  client_id_list  = ["sts.amazonaws.com"]
+  thumbprint_list = ["9e99a48a9960b14926bb7f3b02e22da2b0ab7280"]
+  url             = aws_eks_cluster.eks_master[0].identity[0].oidc[0].issuer
+  tags            = local.tags
+  depends_on      = [aws_eks_cluster.eks_master]
+}
+
+# -- EBS CSI Driver
+
+data "aws_iam_policy_document" "ebs_csi_assume_role" {
+  count = local.count
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+    principals {
+      type        = "Federated"
+      identifiers = [aws_iam_openid_connect_provider.eks_oidc_provider[0].arn]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(aws_iam_openid_connect_provider.eks_oidc_provider[0].url, "https://", "")}:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(aws_iam_openid_connect_provider.eks_oidc_provider[0].url, "https://", "")}:sub"
+      values   = ["system:serviceaccount:kube-system:ebs-csi-controller-sa"]
+    }
+  }
+}
+
+resource "aws_iam_role" "ebs_csi_driver_role" {
+  count              = local.count
+  name               = format("%v-ebs-csi-driver-role", local.cluster_name)
+  assume_role_policy = data.aws_iam_policy_document.ebs_csi_assume_role[0].json
+  tags               = local.tags
+}
+
+resource "aws_iam_role_policy_attachment" "ebs_csi_driver_policy" {
+  count      = local.count
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+  role       = aws_iam_role.ebs_csi_driver_role[0].name
+}
+
+resource "aws_eks_addon" "ebs_csi_driver" {
+  count                       = local.count
+  cluster_name                = aws_eks_cluster.eks_master[0].name
+  addon_name                  = "aws-ebs-csi-driver"
+  service_account_role_arn    = aws_iam_role.ebs_csi_driver_role[0].arn
+  resolve_conflicts_on_create = "OVERWRITE"
+  resolve_conflicts_on_update = "OVERWRITE"
+  tags                        = local.tags
+  depends_on                  = [aws_iam_role_policy_attachment.ebs_csi_driver_policy]
+}
+
+# -- GP3 Storage Class
+
+resource "null_resource" "gp3_storage_class" {
+  count = local.count
+
+  provisioner "local-exec" {
+    command = <<-EOT
+      kubectl patch storageclass gp2 \
+        -p '{"metadata":{"annotations":{"storageclass.kubernetes.io/is-default-class":"false"}}}' || true
+      kubectl apply -f - <<EOF
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: gp3
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "true"
+provisioner: ebs.csi.aws.com
+parameters:
+  type: gp3
+  encrypted: "true"
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+EOF
+    EOT
+    environment = {
+      KUBECONFIG  = "${path.module}/output/kubeconfig-eks-${var.eks_cluster_index}"
+      AWS_PROFILE = var.aws_profile
+    }
+  }
+
+  depends_on = [aws_eks_addon.ebs_csi_driver, null_resource.aws_auth_configmap_apply]
 }

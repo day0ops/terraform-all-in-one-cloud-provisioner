@@ -86,3 +86,29 @@ variable "eks_subnets" {
   type        = number
   default     = 2
 }
+
+# -- DNS
+
+variable "enable_dns" {
+  description = "Enable Route53 child zone and worker node Route53 IAM policy"
+  type        = bool
+  default     = false
+}
+
+variable "dns_parent_zone_id" {
+  description = "Route53 parent hosted zone ID"
+  type        = string
+  default     = null
+}
+
+variable "dns_parent_domain" {
+  description = "Parent domain (e.g., kasunt.apac.fe.solo.io)"
+  type        = string
+  default     = null
+}
+
+variable "dns_child_zone_name" {
+  description = "Child zone subdomain (e.g., demo)"
+  type        = string
+  default     = null
+}
