@@ -17,3 +17,18 @@ output "kubeconfig_path" {
 output "kubeconfig_context" {
   value = local.kubeconfig_context
 }
+
+output "dns_zone_id" {
+  value       = try(aws_route53_zone.child[0].zone_id, null)
+  description = "Route53 child zone ID"
+}
+
+output "dns_zone_name" {
+  value       = try(aws_route53_zone.child[0].name, null)
+  description = "Route53 child zone name"
+}
+
+output "dns_nameservers" {
+  value       = try(aws_route53_zone.child[0].name_servers, [])
+  description = "Route53 child zone nameservers"
+}

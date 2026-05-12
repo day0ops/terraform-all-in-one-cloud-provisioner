@@ -21,4 +21,9 @@ module "eks" {
   owner   = var.owner
   team    = var.team
   purpose = var.purpose
+
+  enable_dns          = var.enable_dns
+  dns_parent_zone_id  = var.dns_parent_zone_id
+  dns_parent_domain   = var.dns_parent_domain
+  dns_child_zone_name = var.dns_child_zone_name
 }
